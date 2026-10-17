@@ -1,0 +1,193 @@
+import { Button } from '@/components/ui/button';
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
+import { CheckCircle, XCircle, Clock } from 'lucide-react';
+import { format } from 'date-fns';
+import { router } from '@inertiajs/react';
+
+export type DefenseRequestSummary = {
+  id: number;
+  first_name: string;
+  middle_name: string | null;
+  last_name: string;
+  program: string;
+  thesis_title: string;
+  date_of_defense?: string;
+  scheduled_date?: string | null;
+  defense_type: string;
+  mode_defense?: string;
+  defense_mode?: string;
+  status: 'Pending' | 'In progress' | 'Approved' | 'Rejected' | 'Needs-info';
+  priority: 'Low' | 'Medium' | 'High';
+  last_status_updated_by?: string;
+  last_status_updated_at?: string;
+  workflow_state?: string;
+  adviser?: string;
+};
+
+export type TableDefenseRequestsProps = {
+  paged: DefenseRequestSummary[];
+  columns: Record<string, boolean>;
+  selected: number[];
+  toggleSelectOne: (id: number) => void;
+  headerChecked: boolean;
+  toggleSelectAll: () => void;
+  toggleSort: () => void;
+  sortDir: 'asc' | 'desc' | null | undefined;
+  onPriorityChange: (id: number, priority: string) => Promise<void>;
+  tabType?: 'pending' | 'rejected' | 'approved';
+  onViewDetails?: (id: number) => void;
+  onRowApprove?: (id: number) => void;
+  onRowReject?: (id: number) => void;
+  onRowRetrieve?: (id: number) => void;
+  highlightMissingDateMode?: boolean;
+  hideActions?: boolean;
+  hideSelect?: boolean;
+};
+
+export default function TableDefenseRequests({
+  paged,
+  columns,
+  selected,
+  toggleSelectOne,
+  headerChecked,
+  toggleSelectAll,
+  toggleSort,
+  sortDir,
+  onPriorityChange,
+  tabType,
+  onViewDetails,
+  onRowApprove,
+  onRowReject,
+  onRowRetrieve,
+  highlightMissingDateMode,
+  hideActions,
+  hideSelect
+}: TableDefenseRequestsProps) {
+  return (
+    <div className="relative w-full">
+      <div className="overflow-x-auto rounded-md border border-border bg-background">
+        <Table className="w-full text-sm table-auto">
+          <TableHeader>
+            <TableRow>
+              {!hideSelect && (
+                <TableHead className="w-[40px] py-2">
+                  <Checkbox checked={headerChecked} onCheckedChange={toggleSelectAll} />
+                </TableHead>
+              )}
+              {columns.title && <TableHead className="px-3 min-w-[180px]">Thesis Title</TableHead>}
+              {columns.presenter && <TableHead className="px-2 min-w-[120px]">Presenter</TableHead>}
+              {columns.adviser && <TableHead className="px-2 min-w-[120px]">Adviser</TableHead>}
+              {columns.program && <TableHead className="px-2 min-w-[100px]">Program</TableHead>}
+              {columns.status && <TableHead className="px-2 min-w-[100px] text-center">Status</TableHead>}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {paged.map(r => {
+              const isSelected = selected.includes(r.id);
+              const handleRowClick = (e: React.MouseEvent) => {
+                const tag = (e.target as HTMLElement).tagName;
+                if (
+                  tag === 'BUTTON' ||
+                  tag === 'INPUT' ||
+                  tag === 'SELECT' ||
+                  (e.target as HTMLElement).closest('.action-btn') ||
+                  (e.target as HTMLElement).closest('.priority-dropdown')
+                ) {
+                  return;
+                }
+                if (onViewDetails) onViewDetails(r.id);
+                else router.visit(`/coordinator/defense-requests/${r.id}/details`);
+              };
+
+              return (
+                <TableRow
+                  key={r.id}
+                  className="hover:bg-muted/40 cursor-pointer"
+                  onClick={handleRowClick}
+                >
+                  {!hideSelect && (
+                    <TableCell className="px-2 py-2">
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => toggleSelectOne(r.id)}
+                        className="action-btn"
+                        onClick={e => e.stopPropagation()}
+                      />
+                    </TableCell>
+                  )}
+                  {columns.title && (
+                    <TableCell className="px-3 py-2 font-medium truncate leading-tight align-middle" title={r.thesis_title}>
+                      {/* Type badge before title */}
+                      <Badge variant="outline" className="mr-2">
+                        {r.defense_type || '—'}
+                      </Badge>
+                      {r.thesis_title}
+                    </TableCell>
+                  )}
+                  {columns.presenter && (
+                    <TableCell className="px-2 py-2 text-xs text-muted-foreground whitespace-nowrap align-middle" title={`${r.first_name} ${r.middle_name ? r.middle_name + ' ' : ''}${r.last_name}`}>
+                      {r.first_name} {r.middle_name ? r.middle_name[0] + '. ' : ''}{r.last_name}
+                    </TableCell>
+                  )}
+                  {columns.adviser && (
+                    <TableCell className="px-2 py-2 text-xs text-muted-foreground whitespace-nowrap align-middle">
+                      {r.adviser || '—'}
+                    </TableCell>
+                  )}
+                  {columns.program && (
+                    <TableCell className="px-2 py-2 text-xs text-muted-foreground whitespace-nowrap align-middle">
+                      {r.program || '—'}
+                    </TableCell>
+                  )}
+                  {columns.status && (
+                    <TableCell className="px-2 py-2 text-xs whitespace-nowrap text-center align-middle">
+                      <Badge
+                        className={
+                          r.status === 'Approved'
+                            ? 'bg-green-100 text-green-700 border-green-200 flex items-center gap-1'
+                            : r.status === 'Rejected'
+                            ? 'bg-red-100 text-red-700 border-red-200 flex items-center gap-1'
+                            : r.status === 'Pending'
+                            ? 'bg-yellow-100 text-yellow-700 border-yellow-200 flex items-center gap-1'
+                            : r.status === 'Needs-info'
+                            ? 'bg-blue-100 text-blue-700 border-blue-200 flex items-center gap-1'
+                            : r.status === 'In progress'
+                            ? 'bg-purple-100 text-purple-700 border-purple-200 flex items-center gap-1'
+                            : 'bg-gray-100 text-gray-700 border-gray-200 flex items-center gap-1'
+                        }
+                      >
+                        {r.status === 'Approved' && <CheckCircle size={14} className="mr-1" />}
+                        {r.status === 'Rejected' && <XCircle size={14} className="mr-1" />}
+                        {r.status === 'Pending' && <Clock size={14} className="mr-1" />}
+                        {r.status}
+                      </Badge>
+                    </TableCell>
+                  )}
+                </TableRow>
+              );
+            })}
+            {paged.length === 0 && (
+              <TableRow>
+                <TableCell
+                  colSpan={
+                    (hideSelect ? 0 : 1) +
+                    (columns.title ? 1 : 0) +
+                    (columns.presenter ? 1 : 0) +
+                    (columns.adviser ? 1 : 0) +
+                    (columns.program ? 1 : 0) +
+                    (columns.status ? 1 : 0)
+                  }
+                  className="text-center py-10 text-muted-foreground"
+                >
+                  No requests found.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}
