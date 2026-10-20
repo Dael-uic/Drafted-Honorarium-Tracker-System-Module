@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
 import { CalendarDays, CheckCircle2, CircleDollarSign, FileCheck2, FileText, Search, Send, ShieldCheck, XCircle } from 'lucide-react';
+import AppLayout from '@/layouts/app-layout';
+import { type BreadcrumbItem } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +20,8 @@ type Props = { role: string; canSubmitToFinance: boolean; canVerifyFinance: bool
 
 const statusLabel: Record<string, string> = { not_submitted: 'Not sent to Finance', submitted: 'Awaiting Finance', verified: 'Finance verified', rejected: 'Finance rejected' };
 
+const breadcrumbs: BreadcrumbItem[] = [{ title: 'Honorarium Tracking', href: '/honorarium-workspace' }];
+
 export default function HonorariumWorkspace() {
   const { role, canSubmitToFinance, canVerifyFinance, items = [], rates = [], flash } = usePage<Props>().props;
   const [tab, setTab] = useState<'workflow' | 'schedule' | 'rates' | 'records'>('workflow');
@@ -30,9 +34,10 @@ export default function HonorariumWorkspace() {
     if (status === 'rejected' && !notes[item.id]?.trim()) { window.alert('Please enter a reason before rejecting.'); return; }
     router.post(`/honorarium-workspace/finance/${item.finance_submission_id}/status`, { status, finance_notes: notes[item.id] ?? '' }, { preserveScroll: true });
   };
-  return <>
-    <Head title="Honorarium Tracking" />
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 md:p-8">
+  return (
+    <AppLayout breadcrumbs={breadcrumbs}>
+      <Head title="Honorarium Tracking" />
+      <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 md:p-8">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
         <div><p className="text-sm text-muted-foreground">Graduate School · Shared workspace</p><h1 className="text-3xl font-bold tracking-tight">Honorarium Tracking</h1><p className="mt-1 text-sm text-muted-foreground">Receipts, panel assignments, scheduling, rates, and verification in one place.</p></div>
         <Badge variant="outline" className="w-fit capitalize">{role}</Badge>
@@ -49,5 +54,6 @@ export default function HonorariumWorkspace() {
       {tab === 'rates' && <Card><CardHeader><CardTitle>Payment rates</CardTitle><p className="text-sm text-muted-foreground">Read-only rate reference. Rate editing remains in the existing Dean payment-rates module.</p></CardHeader><CardContent><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr className="border-b text-muted-foreground"><th className="p-3">Program level</th><th className="p-3">Type</th><th className="p-3">Defense</th><th className="p-3 text-right">Amount</th></tr></thead><tbody>{rates.map(rate => <tr className="border-b last:border-0" key={rate.id}><td className="p-3">{rate.program_level}</td><td className="p-3">{rate.type}</td><td className="p-3">{rate.defense_type ?? '—'}</td><td className="p-3 text-right">₱{Number(rate.amount).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr>)}</tbody></table>{rates.length === 0 && <p className="p-6 text-center text-sm text-muted-foreground">No payment rates configured.</p>}</div></CardContent></Card>}
       {tab === 'records' && <Card><CardHeader><CardTitle>Honorarium records</CardTitle><p className="text-sm text-muted-foreground">Current status history snapshot for the receipt-backed records available to your role.</p></CardHeader><CardContent><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr className="border-b text-muted-foreground"><th className="p-3">Request</th><th className="p-3">Student</th><th className="p-3">Workflow</th><th className="p-3">Finance</th><th className="p-3">Submitted</th></tr></thead><tbody>{items.map(i => <tr className="border-b last:border-0" key={i.id}><td className="p-3">#{i.id}</td><td className="p-3">{i.student_name}</td><td className="p-3">{i.workflow_state}</td><td className="p-3">{statusLabel[i.finance_status] ?? i.finance_status}</td><td className="p-3">{i.submitted_at ?? '—'}</td></tr>)}</tbody></table></div></CardContent></Card>}
     </main>
-  </>;
+    </AppLayout>
+  );
 }

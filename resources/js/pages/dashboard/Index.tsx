@@ -28,13 +28,26 @@ export default function DashboardIndex() {
 
     let ComponentToRender: React.FC<any>;
     const activeRole = (user as any)?.effective_role || user.role;
+    const normalizedRole = activeRole?.toLowerCase?.() ?? '';
 
-    switch (activeRole) {
+    if (['Finance', 'Finance Office', 'Finance Officer'].includes(activeRole) || normalizedRole.includes('finance') || normalizedRole.includes('honorarium')) {
+        ComponentToRender = () => (
+            <div className="p-6 text-amber-600">
+                <p className="font-medium">Honorarium Tracking Only</p>
+                <p className="text-sm text-gray-500">This role is assigned to the honorarium tracking workspace.</p>
+            </div>
+        );
+    } else switch (activeRole) {
         case 'Student':
             ComponentToRender = StudentDashboard;
             break;
         case 'Administrative Assistant':
         case 'Assistant':
+            ComponentToRender = AssistantDashboard;
+            break;
+        case 'Finance':
+        case 'Finance Office':
+        case 'Finance Officer':
             ComponentToRender = AssistantDashboard;
             break;
         case 'Coordinator':
