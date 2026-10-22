@@ -21,6 +21,11 @@ class DashboardController extends Controller
             abort(401);
         }
 
+        $role = strtolower(trim((string) $user->role));
+        if (str_contains($role, 'finance') || str_contains($role, 'honorarium')) {
+            return redirect()->route('honorarium-workspace.index');
+        }
+
         // DATA SCRAPING REMOVED FROM LOGIN FLOW
         // Data will be scraped on-demand when user visits comprehensive exam page
         // This prevents 2-minute login delays

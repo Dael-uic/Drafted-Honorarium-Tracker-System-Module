@@ -24,7 +24,8 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'identifier' => ['required', 'string', 'max:100'],
+            'identifier' => ['required_without:email', 'nullable', 'string', 'max:100'],
+            'email' => ['required_without:identifier', 'nullable', 'string', 'max:100'],
             'password' => ['required', 'string'],
         ];
     }
@@ -33,7 +34,7 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
         
-        $identifier = trim((string)$this->input('identifier'));
+        $identifier = trim((string)($this->input('identifier') ?? $this->input('email')));
         $password = (string)$this->input('password');
 
         Log::info("Login: Starting authentication", [
@@ -109,19 +110,26 @@ class LoginRequest extends FormRequest
             }
         }
         
-        // Local test-account login only; preserve legacy authentication elsewhere.
-        if (app()->environment('local') && $user
-            && Hash::check($password, $user->password)) {
+        // Local and test accounts can authenticate without contacting the legacy portal.
+        if (in_array(app()->environment(), ['local', 'testing'], true) && $user) {
+            if (Hash::check($password, $user->password)) {
+                Auth::login($user, $this->boolean('remember'));
+                RateLimiter::clear($this->throttleKey());
 
-            Auth::login($user, $this->boolean('remember'));
-            RateLimiter::clear($this->throttleKey());
+                Log::info('Login: Local account authenticated', [
+                    'user_id' => $user->id,
+                    'email' => $user->email,
+                ]);
 
-            Log::info('Login: Local test account authenticated', [
-                'user_id' => $user->id,
-                'email' => $user->email,
-            ]);
+                return;
+            }
 
-            return;
+            if (app()->environment('testing')) {
+                RateLimiter::hit($this->throttleKey());
+                throw ValidationException::withMessages([
+                    'identifier' => 'Invalid credentials.',
+                ]);
+            }
         }
 
         // Legacy authentication
@@ -365,7 +373,7 @@ class LoginRequest extends FormRequest
 
     public function throttleKey(): string
     {
-        return Str::lower($this->ip() . '|' . (string)$this->input('identifier'));
+        return Str::lower($this->ip() . '|' . (string)($this->input('identifier') ?? $this->input('email')));
     }
 
     private function fetchAndStoreLegacyAccountId(LegacyPortalClient $legacy, User $user): void

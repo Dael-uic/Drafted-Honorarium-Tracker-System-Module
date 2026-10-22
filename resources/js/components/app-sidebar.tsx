@@ -139,7 +139,7 @@ export function AppSidebar() {
     } else if (user.role === 'Faculty' || user.role === 'Adviser') {
         navItems = facultyNavItems;
     } else if (['Finance', 'Finance Office', 'Finance Officer'].includes(user.role)) {
-        navItems = [{ title: 'Dashboard', href: '/dashboard', icon: LayoutGrid }, { title: 'Honorarium Tracking', href: '/honorarium-workspace', icon: DollarSign }];
+        navItems = [{ title: 'Honorarium Tracking', href: '/honorarium-workspace', icon: DollarSign }];
     } else {
         navItems = studentNavItems;
     }
